@@ -1,3 +1,4 @@
+Authors: Roei Rahamim and Hadar Mansherov
 ANL 2024 Agent Skeleton
 =======================
 
