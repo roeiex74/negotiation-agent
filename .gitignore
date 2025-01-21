@@ -1,0 +1,102 @@
+# ------------------------------
+#  Python bytecode
+# ------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ------------------------------
+#  Virtual environments
+# ------------------------------
+venv/
+.env/
+ENV/
+.venv/
+
+# (If you name your virtual environments differently, add them here)
+# e.g., myenv/, .env_*, etc.
+
+# ------------------------------
+#  Distribution / packaging
+# ------------------------------
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ------------------------------
+#  Installer logs
+# ------------------------------
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ------------------------------
+#  Unit test / coverage reports
+# ------------------------------
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+
+# ------------------------------
+#  Sphinx documentation
+# ------------------------------
+docs/_build/
+site/
+
+# ------------------------------
+#  IDE / Editor artifacts
+# ------------------------------
+# - PyCharm
+.idea/
+*.iml
+
+# - VSCode
+.vscode/
+
+# - Jupyter
+.ipynb_checkpoints
+
+# - Spyder
+.spyderproject
+.spyproject
+
+# - Rope
+.ropeproject
+
+# - Misc
+*.swp
+*.swo
+*~
+*.tmp
+
+# ------------------------------
+#  OS-generated files
+# ------------------------------
+.DS_Store
+Thumbs.db
+
+# ------------------------------
+#  NegMAS-specific (optional)
+# ------------------------------
+# Add any project-specific logs, simulation results, or 
+# other folders used by NegMAS that you want to exclude.
+# e.g.,
+# logs/
+# simulations/
