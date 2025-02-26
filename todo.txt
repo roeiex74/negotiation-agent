@@ -1,0 +1,7 @@
+1. How to create a preference profile 
+2. how to know which strategy to use against each agent
+3. How do identify the preference profile values 
+4. Do i know the utility value of the opponent ? 
+5. Does the utility functions of each agent are public and accessbile to all ? 
+6. Is the outcome space is sequential ? 
+7. How to connect opponent_ufun, like ufun() 
