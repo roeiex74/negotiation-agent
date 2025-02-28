@@ -1,0 +1,16 @@
+# Neg 1 
+Our agent: 
+Preferences, outcomes 
+reservation_value - utility 0.8
+finish - utility 0.85 - advantage - 0.05
+# Neg 2
+Our agent: 
+Preferences, outcomes 
+reservation_value - utility 0.2
+finish - utility 0.45 - advantage - 0.25
+
+
+concession - flexibility 
+Concession rate (alpha) - low on first 10% of the negotiation -> delay our concession
+after 15% negotiatoin - start to be more flexible -> (increase concession / delay concession to end)
+Shochan 

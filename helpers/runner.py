@@ -42,19 +42,43 @@ def run_a_tournament(
         DEFAULT_TOURNAMENT_PATH,
         anl2024_tournament,
     )
-    from anl.anl2024.negotiators import Conceder
+    from anl.anl2024.negotiators import (
+        Conceder,
+        Boulware,
+        NashSeeker,
+        RVFitter,
+    )
+
+    from hard_chaos import HardChaosNegotiator
+    from sochan import Shochan
     from negmas.helpers import humanize_time, unique_name
     from rich import print
 
     start = time.perf_counter()
     name = (
-        unique_name(f"test{TestedNegotiator().type_name.split('.')[-1]}", sep="")
+        unique_name(
+            f"test{TestedNegotiator().type_name.split('.')[-1]}", sep=""
+        )
         if not nologs
         else None
     )
     if small:
-        anl2024_tournament(
-            competitors=tuple([TestedNegotiator, Conceder]),
+        results = anl2024_tournament(
+            competitors=tuple(
+                # [TestedNegotiator, Conceder, Boulware, NashSeeker]
+                [TestedNegotiator]
+                + [
+                    Boulware,
+                    Conceder,
+                    RVFitter,
+                    NashSeeker,
+                    # HardChaosNegotiator,
+                    Shochan,
+                ]
+                # [TestedNegotiator]
+                # + list(DEFAULT_AN2024_COMPETITORS)[:3]
+                # + [HardChaosNegotiator]
+            ),
             n_scenarios=1,
             n_outcomes=n_outcomes,
             n_repetitions=1,
@@ -62,10 +86,13 @@ def run_a_tournament(
             verbosity=2 if debug else 1,
             plot_fraction=0,
             name=name,
-        ).final_scores
+        )
+        print(results.final_scores)
     else:
         anl2024_tournament(
-            competitors=tuple([TestedNegotiator] + list(DEFAULT_AN2024_COMPETITORS)),
+            competitors=tuple(
+                [TestedNegotiator] + list(DEFAULT_AN2024_COMPETITORS)
+            ),
             n_scenarios=n_scenarios,
             n_outcomes=n_outcomes,
             n_repetitions=n_repetitions,
