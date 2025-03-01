@@ -63,23 +63,24 @@ def run_a_tournament(
         else None
     )
     if small:
+        print(list(DEFAULT_AN2024_COMPETITORS))
         results = anl2024_tournament(
             competitors=tuple(
                 # [TestedNegotiator, Conceder, Boulware, NashSeeker]
                 [TestedNegotiator]
                 + [
-                    Boulware,
-                    Conceder,
-                    RVFitter,
-                    NashSeeker,
-                    # HardChaosNegotiator,
-                    Shochan,
+                    # Boulware,
+                    # Conceder,
+                    # RVFitter,
+                    # NashSeeker,
+                    HardChaosNegotiator,
+                    # Shochan,
                 ]
                 # [TestedNegotiator]
                 # + list(DEFAULT_AN2024_COMPETITORS)[:3]
                 # + [HardChaosNegotiator]
             ),
-            n_scenarios=1,
+            n_scenarios=15,
             n_outcomes=n_outcomes,
             n_repetitions=1,
             njobs=-1 if debug else 0,
