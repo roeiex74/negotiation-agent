@@ -830,7 +830,7 @@ class AwesomeNegotiator(SAONegotiator):
                 and opp_util / (my_util + self.epsilon)
                 <= 1.5  # Avoid extreme imbalance
             ):
-                if my_util > my_best_util:
+                if my_util > my_best_util and my_util / opp_util <= 1.5:
                     my_best_util = my_util
                     selected_outcome = outcome
             elif opp_util < estimated_rv:

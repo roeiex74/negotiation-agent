@@ -69,18 +69,18 @@ def run_a_tournament(
                 # [TestedNegotiator, Conceder, Boulware, NashSeeker]
                 [TestedNegotiator]
                 + [
-                    Boulware,
-                    # Conceder,
-                    # RVFitter,
+                    # Boulware,
+                    Conceder,
+                    RVFitter,
                     # NashSeeker,
-                    # HardChaosNegotiator,
+                    HardChaosNegotiator,
                     # Shochan,
                 ]
                 # [TestedNegotiator]
                 # + list(DEFAULT_AN2024_COMPETITORS)[:3]
                 # + [HardChaosNegotiator]
             ),
-            n_scenarios=20,
+            n_scenarios=5,
             n_outcomes=n_outcomes,
             n_repetitions=1,
             njobs=-1 if debug else 0,
