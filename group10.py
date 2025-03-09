@@ -13,6 +13,7 @@ from negmas import pareto_frontier, nash_points
 from negmas.outcomes import Outcome
 from negmas.sao import ResponseType, SAONegotiator, SAOResponse, SAOState
 
+
 def aspiration_function(t, mx, rv, e):
     """
     Time-dependent aspiration function..
@@ -24,7 +25,7 @@ def aspiration_function(t, mx, rv, e):
 
 def average_step_time(state: SAOState) -> float:
     """
-    Calculates the average step time to determine the last two steps 
+    Calculates the average step time to determine the last two steps
     (to estimate the negotiation progress- help determine when the final stages of the negotiation begins).
     """
     return state.relative_time / max(1, state.step)
@@ -38,39 +39,30 @@ class Group10(SAONegotiator):
     def __init__(
         self,
         *args,
-        stochasticity: float = 0.1,
-        min_unique_utilities: int = 10,
         e: float = 18.5,
-        nash_factor: float = 0.1,
+        debug=True,
         **kwargs,
     ):
         """
         Initialize the negotiation agent with adjustable parameters:
-        -> stochasticity: 
-            Controls randomness in bidding.
-        -> e: 
+        -> e:
             Determines initial firmness in offering strategy.
-        -> nash_factor: 
-            Weighting for Nash equilibrium consideration.
-        -> min_unique_utilities: 
+        -> min_unique_utilities:
             Ensures diverse bid selection.
         """
         super().__init__(*args, **kwargs)
-        self.stochasticity = stochasticity
-        self.min_unique_utilities = min_unique_utilities
         self.e = e
         self.fe = e
-        self.nash_factor = nash_factor
         self.opp_offer_history = []
         self.my_offer_history = []
         self.opponent_utilities = []
         self.my_utilities = []
         self.opponent_times = []
-        self.bidding_mode = 0  # Will be used to switch bidding strategy between different scenarion
         self.final_stages = 0.95
         self.phase = "Early"
         self.is_competitive_mode = False
-        self.epsilon = 1e-8
+        self.epsilon = 1e-8  # A small buffer to avoid division by zero in ratio computations
+        self.debug = debug
 
     def _detect_competitive_negotiation(self):
         """
@@ -82,26 +74,26 @@ class Group10(SAONegotiator):
             return
 
         # Utilities at extreme outcomes
-        my_best_utility = self.my_sorted_outcomes[-1][0]  # Max utility for me
+        my_best_utility = self.my_sorted_outcomes[-1][0]  # Max utility
         opp_at_my_best = self.my_sorted_outcomes[-1][
             1
-        ]  # Opponent utility when I maximize
+        ]  # Opponent utility from the max utility for us out of his outcomes
         opp_best_utility = self.opp_sorted_outcomes[-1][
             0
         ]  # Max utility for opponent
         my_at_opp_best = self.opp_sorted_outcomes[-1][
             1
-        ]  # My utility when opponent maximizes
+        ]  # Utility when opponent maximizes
 
         # Calculate trade-off differences
         opp_utility_gain = opp_best_utility - opp_at_my_best
         my_utility_loss = my_best_utility - my_at_opp_best
 
         is_tradeoff_significant = (opp_utility_gain - my_utility_loss) > 0.2
-        
-        # self.is_competitive_mode = is_tradeoff_significant or is_far_from_nash
+
         self.is_competitive_mode = is_tradeoff_significant
-        # short negotiations considered competitive
+
+        #  Short negotiations considered competitive
         if self.nmi.n_steps is not None and self.nmi.n_steps <= 50:
             self.is_competitive_mode = True
 
@@ -250,9 +242,6 @@ class Group10(SAONegotiator):
 
     def bidding_strategy(self, state: SAOState) -> Outcome | None:
         """
-        This is one of the functions you need to implement.
-        It should determine the counter offer.
-
         Returns: The counter offer as Outcome.
         """
         selected_outcome = None
@@ -267,28 +256,29 @@ class Group10(SAONegotiator):
 
         if self.phase == "Final":
             opponent_is_stubborn = self.is_opponent_stubborn()
-            if opponent_is_stubborn:
+            if opponent_is_stubborn and self.debug:
                 self.nmi.log_info(
                     self.id, dict(type="Stubborn Opponent found")
                 )
             if state.relative_time + one_step >= 1.0:
                 # Make a last attempt for a deal
                 selected_outcome = self.final_step_offer()
-                self.nmi.log_info(
-                    "Final_Offer_strategies",
-                    dict(
-                        phase=self.phase,
-                        opponent_type="RegularLastStep",
-                        current_outcome=f"{selected_outcome}",
-                        my_util=f"{self.ufun(selected_outcome)}",
-                        opp_util=f"{self.opponent_ufun(selected_outcome)}_FinalOffer########",
-                    ),
-                )
+                if self.debug:
+                    self.nmi.log_info(
+                        "Final_Offer_strategies",
+                        dict(
+                            phase=self.phase,
+                            opponent_type="RegularLastStep",
+                            current_outcome=f"{selected_outcome}",
+                            my_util=f"{self.ufun(selected_outcome)}",
+                            opp_util=f"{self.opponent_ufun(selected_outcome)}_FinalOffer########",
+                        ),
+                    )
             elif (
                 state.relative_time + 3 * one_step > 1.0
                 or not opponent_is_stubborn
             ):
-                # Final stages: Optimize offer like Shochan with safeguards
+                # Optimize offer based on opponent offers diversity and estimated aspirations
                 if self.opponent_utilities:
                     opp_min = min(self.opponent_utilities)
                     opp_max = max(self.opponent_utilities)
@@ -324,26 +314,26 @@ class Group10(SAONegotiator):
                             selected_outcome = outcome
                     elif opp_util < opp_target:
                         break
-
-                self.nmi.log_info(
-                    "Final_Offer_strategies",
-                    dict(
-                        phase=self.phase,
-                        opponent_type="Regular",
-                        current_outcome=f"{selected_outcome}",
-                        my_util=f"{self.ufun(selected_outcome)}",
-                        opp_util=f"{self.opponent_ufun(selected_outcome)}########",
-                    ),
-                )
+                if self.debug:
+                    self.nmi.log_info(
+                        "Final_Offer_strategies",
+                        dict(
+                            phase=self.phase,
+                            opponent_type="Regular",
+                            current_outcome=f"{selected_outcome}",
+                            my_util=f"{self.ufun(selected_outcome)}",
+                            opp_util=f"{self.opponent_ufun(selected_outcome)}########",
+                        ),
+                    )
                 if opponent_is_conceding and self.opp_offer_history:
                     best_received = max(self.opp_offer_history, key=self.ufun)
 
-                    # **Ensure we still get a profitable deal**
+                    # Ensure we still get a profitable deal
                     if self.ufun(best_received) > my_best_util:
                         selected_outcome = best_received
                         my_best_util = self.ufun(best_received)
 
-                    # **Check ratio between utilities**
+                    # Check ratio between utilities
                     offer_ratio = self.opponent_ufun(
                         selected_outcome
                     ) / self.ufun(selected_outcome)
@@ -356,20 +346,20 @@ class Group10(SAONegotiator):
                             if (
                                 my_util > self.ufun.reserved_value + 0.1
                                 and my_util / opp_util >= 1.2
-                            ):  # Ensure I am getting a better deal
+                            ):  # Ensure getting a better deal
                                 selected_outcome = outcome
                                 break
-
-                    self.nmi.log_info(
-                        "Final_Offer_strategies",
-                        dict(
-                            phase=self.phase,
-                            opponent_type="Conceding",
-                            current_outcome=f"{selected_outcome}",
-                            my_util=f"{self.ufun(selected_outcome)}",
-                            opp_util=f"{self.opponent_ufun(selected_outcome)}########",
-                        ),
-                    )
+                    if self.debug:
+                        self.nmi.log_info(
+                            "Final_Offer_strategies",
+                            dict(
+                                phase=self.phase,
+                                opponent_type="Conceding",
+                                current_outcome=f"{selected_outcome}",
+                                my_util=f"{self.ufun(selected_outcome)}",
+                                opp_util=f"{self.opponent_ufun(selected_outcome)}########",
+                            ),
+                        )
 
                 elif (
                     opponent_is_nash_seeking
@@ -378,16 +368,17 @@ class Group10(SAONegotiator):
                 ):
                     if self.ufun(self.nash_outcome) > my_best_util:
                         selected_outcome = self.nash_outcome
-                    self.nmi.log_info(
-                        "Final_Offer_strategies",
-                        dict(
-                            phase=self.phase,
-                            opponent_type="Nash Seeking with nash outcome",
-                            current_outcome=f"{selected_outcome}",
-                            my_util=f"{self.ufun(selected_outcome)}",
-                            opp_util=f"{self.opponent_ufun(selected_outcome)}########",
-                        ),
-                    )
+                    if self.debug:
+                        self.nmi.log_info(
+                            "Final_Offer_strategies",
+                            dict(
+                                phase=self.phase,
+                                opponent_type="Nash Seeking with nash outcome",
+                                current_outcome=f"{selected_outcome}",
+                                my_util=f"{self.ufun(selected_outcome)}",
+                                opp_util=f"{self.opponent_ufun(selected_outcome)}########",
+                            ),
+                        )
                 if not selected_outcome:
                     selected_outcome = (
                         self.best_offer
@@ -459,15 +450,15 @@ class Group10(SAONegotiator):
     def __call__(self, state: SAOState) -> SAOResponse:
         assert self.ufun and self.opponent_ufun
         self.update_partner_reserved_value(state)
-
-        self.nmi.log_info(
-            self.id,
-            dict(
-                turn="Opponent OFFER",
-                my_util=f"{self.ufun(state.current_offer)}",
-                opponent_util=f"{self.opponent_ufun(state.current_offer)}",
-            ),
-        )
+        if self.debug:
+            self.nmi.log_info(
+                self.id,
+                dict(
+                    turn="Opponent OFFER",
+                    my_util=f"{self.ufun(state.current_offer)}",
+                    opponent_util=f"{self.opponent_ufun(state.current_offer)}",
+                ),
+            )
 
         util_ratio = self.opponent_ufun(state.current_offer) // (
             self.ufun(state.current_offer) + self.epsilon
@@ -487,28 +478,28 @@ class Group10(SAONegotiator):
 
         selected_outcome = self.bidding_strategy(state)
         if selected_outcome is None:
-            self.nmi.log_error(
-                "Error_bidding",
-                dict(msg="Could not match any offer from bidding strategy."),
-            )
+            if self.debug:
+                self.nmi.log_error(
+                    "Error_bidding",
+                    dict(
+                        msg="Could not match any offer from bidding strategy."
+                    ),
+                )
             selected_outcome = self.best_offer
 
         self.my_offer_history.append(selected_outcome)
         self.my_utilities.append(float(self.ufun(selected_outcome)))
-        self.nmi.log_info(
-            self.id,
-            dict(
-                turn="Suggesting Offer",
-                my_util=f"{self.ufun(selected_outcome)}",
-                opponent_util=f"{self.opponent_ufun(selected_outcome)}",
-                current_phase=self.phase,
-            ),
-        )
-        selected_util_ratio = self.opponent_ufun(selected_outcome) // (
-            self.ufun(selected_outcome) + self.epsilon
-        )
-        # if selected_util_ratio >= 1.5:
-        #     selected_outcome = self.ufun.best()
+        if self.debug:
+            self.nmi.log_info(
+                self.id,
+                dict(
+                    turn="Suggesting Offer",
+                    my_util=f"{self.ufun(selected_outcome)}",
+                    opponent_util=f"{self.opponent_ufun(selected_outcome)}",
+                    current_phase=self.phase,
+                ),
+            )
+
         return SAOResponse(ResponseType.REJECT_OFFER, selected_outcome)
 
     def estimate_opponent_reservation_value(self):
@@ -522,7 +513,7 @@ class Group10(SAONegotiator):
                 0.2, 0.4
             )  # Stochastic fallback if no data available
 
-        # **Step 1: Identify true minimum opponent offer**
+        # Step 1: Identify true minimum opponent offer
         opp_min = min(
             self.opponent_utilities
         )  # The lowest opponent offer observed
@@ -536,14 +527,14 @@ class Group10(SAONegotiator):
         # Opponent's latest offers trend
         opp_recent_min = min(opp_recent)
 
-        # **Step 3: Calculate estimated RV based on "true" concessions**
+        # Step 3: Calculate estimated RV based on "true" concessions
         true_concession_threshold = 0.05  # Minimum utility drop required to consider as a real concession
         true_concession = (
             opp_min < 0.6
             and (opp_recent_min - opp_min) < true_concession_threshold
         )
 
-        # **Step 4: Adjust the estimation for fairness and risk mitigation**
+        # Step 4: Adjust the estimation for fairness and risk mitigation
         if true_concession:
             estimated_rv = (
                 opp_min * 0.6
@@ -553,29 +544,62 @@ class Group10(SAONegotiator):
                 opp_min - 0.4, 0.25
             )  # More cautious lowering to prevent bad deals
 
-        # **Step 5: Risk-aware final adjustments**
+        # Step 5: Risk-aware final adjustments
         if opp_min < 0.2:
             # Opponent's offers are too low—possibly bluffing
             estimated_rv = opp_min * 0.8
-        self.nmi.log_info(
-            "Estimated_opp_rv", dict(res_value=f"{estimated_rv}#######")
-        )
+        if self.debug:
+            self.nmi.log_info(
+                "Estimated_opp_rv", dict(res_value=f"{estimated_rv}#######")
+            )
         return estimated_rv
 
     def is_opponent_conceding(self, window=10, min_trend=0.005, min_drop=0.02):
+        """
+        Determine if the opponent is conceding based on recent utility values.
+
+        This method analyzes the opponent's recent utility values to detect any concession trends.
+        It checks if the average drop between consecutive utility values (trend) over a specified
+        window exceeds a minimum threshold, or if the most recent drop is greater than a specified threshold.
+
+        Parameters:
+            window (int): The number of recent utility values to consider for analysis (default: 10).
+            min_trend (float): The minimum average decrease between consecutive utility values required
+                            to infer a concession trend (default: 0.005).
+            min_drop (float): The minimum drop between the last two utility values required to infer an
+                            immediate concession (default: 0.02).
+
+        Returns:
+            bool: True if either the average concession trend or the latest concession drop exceeds
+                the specified thresholds, indicating that the opponent is conceding; otherwise, False.
+        """
+        # Check if there are enough data points to evaluate the concession trend.
         if len(self.opponent_utilities) < window:
             return False
+
+        # Extract the most recent 'window' number of utility values.
         recent_utils = self.opponent_utilities[-window:]
+        # Calculate the differences between consecutive utility values.
+        # Each difference represents the change from one negotiation step to the next.
+        # A positive value indicates a drop in utility
+
         diffs = [
             recent_utils[i] - recent_utils[i + 1]
             for i in range(len(recent_utils) - 1)
         ]
+
+        # Compute the average concession trend over the recent moves.
+        # A higher positive average suggests a consistent pattern of conceding.
         trend = sum(diffs) / len(diffs)  # Positive = concession
+
         latest_drop = (
             recent_utils[-2] - recent_utils[-1]
             if len(recent_utils) >= 2
             else 0
         )
+        # Return True if either:
+        # - The average trend exceeds the minimum concession threshold (min_trend), or
+        # - The latest concession drop exceeds the minimum drop threshold (min_drop).
         return trend > min_trend or latest_drop > min_drop
 
     def is_nash_seeking(self, proximity_threshold=0.05, n_recent=3):
@@ -601,41 +625,6 @@ class Group10(SAONegotiator):
                 return False  # Offer is too far from Nash point
 
         return True  # All recent offers are near the Nash point
-
-    def is_opponent_erratic(
-        self, variance_threshold=0.2, trend_threshold=0.02
-    ):
-        """
-        Determines if the opponent is erratic based on offer utility variance and trend.
-
-        Args:
-            variance_threshold (float): Max acceptable variance before opponent is erratic.
-            trend_threshold (float): Min slope for a consistent trend.
-
-        Returns:
-            bool: True if opponent is erratic, False otherwise.
-        """
-        # Need enough data to analyze
-        if len(self.opponent_utilities) < 5:
-            return False
-
-        # Convert utilities and times to numpy arrays
-        utils = np.array(self.opponent_utilities)
-        times = np.array(
-            self.opponent_times
-        )  # Assumes times of offers are tracked
-
-        # Check variance
-        variance = np.var(utils)
-        if variance > variance_threshold:
-            return True
-
-        # Check trend (slope near zero means no consistent concession)
-        slope, _ = np.polyfit(times, utils, 1)
-        if abs(slope) < trend_threshold:
-            return True
-
-        return False
 
     def is_opponent_stubborn(
         self,
@@ -713,7 +702,7 @@ class Group10(SAONegotiator):
         # Determine if opponent is conceding
         is_opponent_conceding = self.is_opponent_conceding()
 
-        # **Set Aspiration Level Based on Phase**
+        # Set Aspiration Level Based on Phase
         if self.phase == "Early":
             # Hold firm in early rounds
             # Calculate my utility and maximum possible utility
@@ -737,8 +726,7 @@ class Group10(SAONegotiator):
                 self.final_stages * self.estimated_final_time
             )
 
-            # if state.relative_time >= final_phase_start_time:
-            # Compute ShoChan-style aspiration decay
+            # Compute aspiration decay
             initial_asp = aspiration_function(
                 final_phase_start_time / self.estimated_final_time,
                 1.0,
@@ -760,13 +748,11 @@ class Group10(SAONegotiator):
             border = max(
                 self.ufun.reserved_value, adjusted_asp
             )  # Ensure no over-concession
-            # else:
-            #     border = self.ufun.reserved_value
 
         # Compute final aspiration threshold
         myasp = aspiration_function(state.relative_time, 1.0, border, self.e)
 
-        # **Final Adjustments Based on Time Left**
+        # Final Adjustments Based on Time Left
         if time_left < avg_step_duration * 3:
             if not is_opponent_conceding:
                 myasp = (
@@ -774,7 +760,7 @@ class Group10(SAONegotiator):
                         self.ufun.reserved_value,
                         self.ufun(best_received_offer),
                     )
-                    + 0.1
+                    + 0.2
                 )
             else:
                 myasp = max(
@@ -783,19 +769,25 @@ class Group10(SAONegotiator):
                 )
 
         # Log for debug
-        self.nmi.log_debug(
-            self.id,
-            dict(
-                turn="Checking Acceptance",
-                aspiration=f"{myasp}",
-                reservation_value=f"{self.ufun.reserved_value}",
-            ),
-        )
+        if self.debug:
+            self.nmi.log_debug(
+                self.id,
+                dict(
+                    turn="Checking Acceptance",
+                    aspiration=f"{myasp}",
+                    reservation_value=f"{self.ufun.reserved_value}",
+                ),
+            )
+
         return float(self.ufun(offer)) >= myasp
 
     def best_opponent_offer(self) -> Outcome:
+        """Returns maximal Outcome object from opponent offers during negotiation in terms of our utility."""
+
+        # No offers yet - allow a fallbck
         if not self.opp_offer_history:
             return self.ufun.best()  # Fallback to best known offer
+        # Select the max outcome by our utility
         return max(self.opp_offer_history, key=lambda h: self.ufun(h))
 
     def final_step_offer(self):
